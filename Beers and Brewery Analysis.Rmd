@@ -37,12 +37,16 @@ head(beers)
 head(brewery)
 
 ```
+Load both CSV files and printed out the head of each data frame to check them visually.
 ```{r}
 #Question 1
 brewery %>% arrange(State) %>% ggplot(aes(x=State),count=Name)+geom_bar()+geom_text(aes(label=..count..),stat='count',vjust=-.5) +
   xlab('States')+ ylab('Brewery Numbers') + ggtitle('Numbers of Brewery by State')  #Bar plot to count the brewery numbers in each state
 
 ```
+Plot the numbers of brewery by state.
+Colorado (47) has the most breweries.
+California (39), Michigan (32), Oregon (29) and Texas (28) are the next top four states with max breweries.
 ```{r}
 #Question 2
 colnames(beers)[colnames(beers)=='Brewery_id']='Brew_ID'  #Change one of the data frame column names before merging two data sets.
@@ -54,23 +58,24 @@ head(df_beer)
 tail(df_beer)
 
 ```
+Merged two data frames and printed out head and tail of the new combined data frame.
 ```{r}
 #Question 3
 
 df_beerall=df_beer %>% replace_with_na_all(condition = ~.x=='')
-df_beerall=df_beerall %>% replace_with_na_all(condition = ~.x==' ')
-gg_miss_var(df_beerall)
+df_beerall=df_beerall %>% replace_with_na_all(condition = ~.x==' ') # Replace any blank values with NA
+gg_miss_var(df_beerall) #Plot to check if any column has missing values
 
 table(is.na(df_beerall$IBU))
 table(is.na(df_beerall$ABV))
-table(is.na(df_beerall$ABV | df_beerall$IBU))
+table(is.na(df_beerall$ABV | df_beerall$IBU)) #Printed out the numbers of missing values in ABV and IBU columns
 
 imp=mice(df_beerall, method='norm.predict', m=5)
-beer_imp=complete(imp)
+beer_imp=complete(imp) #Use linear regression method to replace missing values in ABV and IBU columns.
 gg_miss_var(beer_imp)
 table(is.na(beer_imp$IBU))
 table(is.na(beer_imp$ABV))
-table(is.na(beer_imp$Style))
+table(is.na(beer_imp$Style)) #Check how many missing values in beer style column
 ```
 We can see there are missing values in Style, ABV and IBU columns.
 In ABV column, there are 62 missing values.
@@ -90,7 +95,9 @@ Median_ABV_IBU %>% ggplot(aes(x=State, y=Median_IBU, width=.5))+geom_bar(stat='i
   geom_text(aes(label=sprintf("%0.1f", round(Median_IBU, digits = 1))),vjust=-.5,size=2.5,check_overlap = T) +
   xlab('States') +ylab('Median International Bitterness')+ggtitle('Median International Bitterness by State') 
 ```
-
+Plot median ABV and median IBU by each state.
+Washington DC and Kentucky have the highest median ABV values which are 6.25%.
+Maine has the highest median IBU value 61 followed by West Virginia 57.5.
 ```{r}
 #Question 5
 Max_ABV_IBU=beer_imp %>% arrange(State) %>% group_by(State) %>% summarise(Max_ABV=max(ABV, na.rm=TRUE), Max_IBU=max(IBU,na.rm=T))
@@ -102,8 +109,8 @@ Max_ABV_IBU %>% ggplot(aes(x=State, y=Max_IBU,width=.5))+geom_bar(stat='identity
   geom_text(aes(label=sprintf("%0.1f", round(Max_IBU, digits = 1))),vjust=-.5,size=2.5,check_overlap = T) +
   xlab('States') +ylab('Max International Bitterness')+ggtitle('Max International Bitterness by State')
 ```
-We can see Colorado has the maximum Alcoholic beer with ABV 12.8% and Oregon has the most bitter beer with IBU 138.
-
+The State with the maximum ABV beer is Colorado (12.8%). This is Upslope Brewing Company’s Lee Hill Series Vol.5- Belgian Style Quadrupel Ale.
+The State with the maximum IBU beer is Oregon (138 IBU). This is Astoria Brewing Company’s Bitter Bitch Imperial IPA.
 ```{r}
 
 #Question 6
@@ -115,7 +122,7 @@ beer_imp%>% summarise(Mean=mean(ABV, na.rm=TRUE),
                                              N=n())
 
 beer_imp %>% filter(!is.na(ABV)) %>% ggplot(aes(x=ABV))+geom_histogram(aes(y=..density..),colour='black',fill='white')+
-  geom_density(alpha=.5, fill='#FF6666')
+  geom_density(alpha=.5, fill='#FF6666') #Plot the distribution of ABV
 ```
 The distribution of ABV is right skewed. ABV of beers around 5% has the most counts. 
 There are total 2410 non-missing ABV values in this data set. The maximum ABV is 12.8%, the minimum ABV is .1%, the median ABV is 5.6%.
@@ -128,7 +135,7 @@ beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>%
 
 rcorr(beer_imp$ABV, beer_imp$IBU,type='pearson')
 ggscatter(beer_imp,x='IBU', y='ABV',add='reg.line',conf.int=T,cor.coef = T,cor.method='pearson')
-
+#Checked the linear correlation between ABV and IBU
 
 ```
 Most beers with lower IBU (less than 50) have ABV values around 5%. When IBU value increases, ABV values spreads out. But most beers with IBU values above 50, their ABV values spread out within the region between 5% and 10%.
@@ -137,37 +144,38 @@ Thus, the correlation coefficient is 0.76 which is probably larger than if I rem
 
 ```{r}
 #Question 8  KNN
-beer_imp %>% filter(is.na(beer_imp$Style))
+beer_imp %>% filter(is.na(beer_imp$Style)) #Print out all rows contains missing values in beer style column.
 
 beer_imp$Style[beer_imp$Beer_ID=='2210']='Red Ale - American Amber/Red'
 beer_imp$Style[beer_imp$Beer_ID=='2527']='Lager - Märzen/Oktoberfest'
 beer_imp$Style[beer_imp$Beer_ID=='1635']='Scottish Ale'
 beer_imp$Style[beer_imp$Beer_ID=='1796']='IPA - AMERICAN'
 beer_imp$Style[beer_imp$Beer_ID=='1790']='FRUITED ALE'
-              
+#Replaced five missing values in beer style column to real data found online.   
+           
 df_beer_IPA=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','IPA','\\b',sep=''), ignore_case = T)))
+  filter(str_detect(Style, regex(str_c('\\b','IPA','\\b',sep=''), ignore_case = T))) #Find all IPA style beer
 
-df_beer_IPA$Style=as.factor('IPA')
+df_beer_IPA$Style=as.factor('IPA') #Replace all IPA style beer with style name 'IPA'
 
 df_beer_Ale=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','Ale','\\b',sep=''), ignore_case = T)))
+  filter(str_detect(Style, regex(str_c('\\b','Ale','\\b',sep=''), ignore_case = T))) #Find all Ale style beer
 
-df_beer_Ale$Style=as.factor('Ale')
+df_beer_Ale$Style=as.factor('Ale') #Replace all Ale style beer with style name 'Ale'
 
-df_beer_test=rbind(df_beer_IPA, df_beer_Ale)
+df_beer_test=rbind(df_beer_IPA, df_beer_Ale) #Combine these two data frames
 
 iterations = 500
 numks = 30
 splitPerc = .7
 masterAcc = matrix(nrow = iterations, ncol = numks)
 set.seed(6)
-trainIndices = sample(1:dim(df_beer_test)[1],round(splitPerc * dim(df_beer_test)[1]))
+trainIndices = sample(1:dim(df_beer_test)[1],round(splitPerc * dim(df_beer_test)[1])) #Shuffle the training and testing groups
 beer_train = df_beer_test[trainIndices,]
 beer_test = df_beer_test[-trainIndices,]
-classifications=knn(beer_train[,c(4,5)],beer_test[,c(4,5)],beer_train$Style, prob = TRUE, k = 5)
+classifications=knn(beer_train[,c(4,5)],beer_test[,c(4,5)],beer_train$Style, prob = TRUE, k = 5) 
 CM = confusionMatrix(table(classifications,beer_test$Style))
-classifications
+classifications  #Use KNN method to predict beer style by its ABV and IBU values
 CM 
 ```
 I replaced five missing values in beer style column missing by real beer style I got online.
@@ -190,7 +198,7 @@ for(j in 1:iterations)
 }
 MeanAcc = colMeans(masterAcc)
 p=ggplot(mapping=aes(x=seq(1,numks,1), y=MeanAcc))+geom_line()
-ggplotly(p)
+ggplotly(p)  #Shuffle the training and testing groups 500 times and loop the k value from 1 to 30 
 ```
 I shuffled the training and testing data 500 times by 70%/30% split. And assigned integer k value from 1 to 30. 
 From the plot, we can tell when k=5, it gives us the highest accuracy 85% which means we can predict the beer is either India Pale Ales or
@@ -222,16 +230,16 @@ MeanSen = colMeans(masterSen)
 MeanSpec = colMeans(masterSpec)
 MeanAcc
 MeanSen
-MeanSpec
+MeanSpec  #Use Naive Bayes model to predict the mean accuracy by shufftling training and testing groups 500 times
 ```
 Now I chose to use Naive Bayes model as I want to compare the accuracy with KNN model. I shuffled the training and testing data 500 times by 70%/30% split like I did in KNN model. The mean accuracy of Naive Bayes is 84% which is similar to what we got from KNN.
 ```{r}
 #Question 9 Sorted Lager, Stout, IPA
 df_beer_stout=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','stout','\\b',sep=''), ignore_case = T)))
+  filter(str_detect(Style, regex(str_c('\\b','stout','\\b',sep=''), ignore_case = T))) # Find all Stout style beer
 
 df_beer_lager=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','lager','\\b',sep=''), ignore_case = T)))
+  filter(str_detect(Style, regex(str_c('\\b','lager','\\b',sep=''), ignore_case = T))) # Find all Lager style beer
 
 df_beer_stout$Style=as.factor('Stout')
 df_beer_lager$Style=as.factor('Lager')
