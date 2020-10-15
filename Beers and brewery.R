@@ -22,6 +22,8 @@ library(knitr)
 library(mice)
 library(Hmisc)
 library(ggpubr)
+library(maps)
+library(usmap)
 knitr::opts_chunk$set(error = TRUE)
 beers=read.csv('/Users/renfengwang/Documents/SMU\ Data\ Science\ Program/Doing\ Data\ Science/Project\ 1/Beers.csv',header=T)
 brewery=read.csv('/Users/renfengwang/Documents/SMU\ Data\ Science\ Program/Doing\ Data\ Science/Project\ 1/Breweries.csv',header=T)
@@ -118,6 +120,8 @@ df_beer_Ale$Style=as.factor('Ale')
 
 df_beer_test=rbind(df_beer_IPA, df_beer_Ale)
 
+df_beer_test %>% ggplot(aes(x=ABV, y=IBU)) +geom_point(aes(colour=Style))
+
 iterations = 500
 numks = 30
 splitPerc = .7
@@ -179,79 +183,26 @@ MeanSpec
 
 
 
-#Question 9 Sorted Lager, Stout, IPA
-df_beer_stout=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','stout','\\b',sep=''), ignore_case = T)))
+#Question 9 ABV and IBU average by state
+Mean_ABV_IBU=beer_imp %>% group_by(State) %>% summarise(Mean_ABV=mean(ABV, na.rm=TRUE), Mean_IBU=mean(IBU,na.rm=TRUE))
+colnames(Mean_ABV_IBU)[colnames(Mean_ABV_IBU)=='State']='abbr'
+statedata= statepop[,c(2,3)]
+statedata$abbr=as.factor(statedata$abbr)
+Mean_ABV_IBU$abbr=as.factor(Mean_ABV_IBU$abbr)
+statedata1=merge(statedata,Mean_ABV_IBU,by='abbr',all.x=T)
+statedata2=cbind(statedata1,Mean_ABV_IBU)
+statedata3=statedata2[,c(1,2,6,7)]
+colnames(statedata3)[colnames(statedata3)=='full']='state'
 
-df_beer_lager=beer_imp %>% filter(!is.na(ABV) &!is.na(IBU)) %>% 
-  filter(str_detect(Style, regex(str_c('\\b','lager','\\b',sep=''), ignore_case = T)))
+plot_usmap(data = statedata3, values = "Mean_ABV", color = "red") + 
+  scale_fill_continuous(
+    low = "white", high = "red", name = "Mean_ABV", label = scales::comma
+  ) + theme(legend.position = "right") + ggtitle('Mean ABV by State')
 
-df_beer_stout$Style=as.factor('Stout')
-df_beer_lager$Style=as.factor('Lager')
-
-df_beer_sort=rbind(df_beer_IPA, df_beer_stout)
-df_beer_sort=rbind(df_beer_sort, df_beer_lager)
-
-#Naive Bayes--------------
-iterations = 500
-masterAcc = matrix(nrow = iterations)
-masterSen = matrix(nrow = iterations)
-masterSpec = matrix(nrow = iterations)
-splitPerc = .7 
-for(j in 1:iterations)
-{
-  
-  trainIndices = sample(1:dim(df_beer_sort)[1],round(splitPerc * dim(df_beer_sort)[1]))
-  beer_sort_train = df_beer_sort[trainIndices,]
-  beer_sort_test = df_beer_sort[-trainIndices,]
-  model = naiveBayes(beer_sort_train[,c(4,5)],as.factor(beer_sort_train$Style),laplace = 1)
-  table(predict(model,beer_sort_test[,c(4,5)]),as.factor(beer_sort_test$Style))
-  CM = confusionMatrix(table(predict(model,beer_sort_test[,c(4,5)]),as.factor(beer_sort_test$Style)))
-  masterAcc[j] = CM$overall[1]
-  masterSen[j] = CM$byClass[1]
-  masterSpec[j] = CM$byClass[2]
-}
-MeanAcc = colMeans(masterAcc)
-MeanSen = colMeans(masterSen)
-MeanSpec = colMeans(masterSpec)
-MeanAcc
-MeanSen
-MeanSpec
-
-#-----------KNN
-
-iterations = 500
-numks = 30
-splitPerc = .7
-masterAcc = matrix(nrow = iterations, ncol = numks)
-
-for(j in 1:iterations)
-{
-  accs = data.frame(accuracy = numeric(30), k = numeric(30))
-  trainIndices = sample(1:dim(df_beer_sort)[1],round(splitPerc * dim(df_beer_sort)[1]))
-  beer_sort_train = df_beer_sort[trainIndices,]
-  beer_sort_test = df_beer_sort[-trainIndices,]
-  for(i in 1:numks)
-  {
-    classifications = knn(beer_sort_train[,c(4,5)],beer_sort_test[,c(4,5)],beer_sort_train$Style, prob = TRUE, k = i)
-    table(classifications,beer_sort_test$Style)
-    CM = confusionMatrix(table(classifications,beer_sort_test$Style))
-    masterAcc[j,i] = CM$overall[1]
-  }
-}
-MeanAcc = colMeans(masterAcc)
-e=ggplot(mapping=aes(x=seq(1,numks,1), y=MeanAcc))+geom_line()
-ggplotly(e)
-
-
-trainIndices = sample(1:dim(df_beer_sort)[1],round(splitPerc * dim(df_beer_sort)[1]))
-beer_sort_train = df_beer_sort[trainIndices,]
-beer_sort_test = df_beer_sort[-trainIndices,]
-classifications_knn=knn(beer_sort_train[,c(4,5)],beer_sort_test[,c(4,5)],beer_sort_train$Style, prob = TRUE, k = 5)
-CM_knn = confusionMatrix(table(classifications,beer_sort_test$Style))
-classifications_knn
-CM_knn
-
+plot_usmap(data = statedata3, values = "Mean_IBU", color = "black") + 
+  scale_fill_continuous(
+    low = "white", high = "blue", name = "Mean_IBU", label = scales::comma
+  ) + theme(legend.position = "right") + ggtitle('Mean IBU by State')
 
 #Back to Question 7
 df_beer_study=rbind(df_beer_sort, df_beer_Ale)
